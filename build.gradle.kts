@@ -19,7 +19,7 @@ repositories {
     maven("https://github-package-registry-mirror.gc.nav.no/cached/maven-release")
 }
 
-val rapidsAndRiversCli = "1.8bf080c"
+val rapidsAndRiversCli = "1.2e828ce"
 val junitJupiterVersion = "5.12.1"
 
 dependencies {
