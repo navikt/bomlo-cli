@@ -1,0 +1,8 @@
+[versions]
+sykepengerGradlePlugins = "20261001.1830"
+
+[libraries]
+rapidsAndRiversCli = "com.github.navikt:rapids-and-rivers-cli:1.2e828ce"
+
+[plugins]
+sykepenger-kotlin = { id = "no.nav.sykepenger.kotlin", version.ref = "sykepengerGradlePlugins" }

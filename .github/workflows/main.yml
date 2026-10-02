@@ -1,0 +1,73 @@
+name: main - Bygg, test og release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # Generelt oppsett - alt unntatt dokumentasjon / urelatert oppsett
+      - '**'
+      - '!**.md'
+      - '!CODEOWNERS'
+      - '!LICENSE'
+      - '!docs/**'
+      - '!.github/workflows/standard-dependabot-auto-merge.yml'
+      - '!.github/workflows/standard-dependency-submission.yml'
+      - '!.github/workflows/standard-pr.yml'
+  schedule:
+    - cron: '0 4 * * 3'
+      timezone: 'Europe/Oslo'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bygg-test-og-release:
+    name: Bygg, test og release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # for gh release create
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Generer versjon
+        id: versjon
+        run: |
+          VERSJON="1.$(date '+%Y%m%d%H%M%S')"
+          echo "## Versjon $VERSJON" >> "$GITHUB_STEP_SUMMARY"
+          echo "versjon=$VERSJON" >> "$GITHUB_OUTPUT"
+
+      - name: gradlew clean build
+        env:
+          VERSJON: ${{ steps.versjon.outputs.versjon }}
+          REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew clean build --build-cache -Pversion="$VERSJON" -Prepository="$REPOSITORY"
+
+      - name: Opprett release
+        if: github.ref == 'refs/heads/main'
+        env:
+          VERSJON: ${{ steps.versjon.outputs.versjon }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$VERSJON" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --generate-notes \
+            --title "$VERSJON" \
+            ./build/libs/app.jar ./rr
