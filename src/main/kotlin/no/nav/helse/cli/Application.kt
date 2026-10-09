@@ -6,25 +6,26 @@ import kotlin.system.exitProcess
 
 internal val log = LoggerFactory.getLogger("no.nav.helse.cli.App")
 
-private val commands = listOf<Command>(
-    CurrentPartitionsCommand(),
-    CurrentOffsetsCommand(),
-    FlowrateCommand(),
-    SetOffsetsCommand(),
-    TopicFlowrateCommand(),
-    ProduceCommand(),
-    DeleteConsumerGroupCommand(),
-    ObserveCommand(),
-    ConsumersCommand(),
-    MeasureCommand(),
-    TraceCommand(),
-    FollowCommand(),
-    FollowTopicCommand(),
-    FollowEventCommand(),
-    CheckVersionCommand(),
-    ConsumeCommand(),
-    OffsetsCommand()
-)
+private val commands =
+    listOf<Command>(
+        CurrentPartitionsCommand(),
+        CurrentOffsetsCommand(),
+        FlowrateCommand(),
+        SetOffsetsCommand(),
+        TopicFlowrateCommand(),
+        ProduceCommand(),
+        DeleteConsumerGroupCommand(),
+        ObserveCommand(),
+        ConsumersCommand(),
+        MeasureCommand(),
+        TraceCommand(),
+        FollowCommand(),
+        FollowTopicCommand(),
+        FollowEventCommand(),
+        CheckVersionCommand(),
+        ConsumeCommand(),
+        OffsetsCommand(),
+    )
 
 fun main(args: Array<String>) {
     app(args.toList())
@@ -44,7 +45,11 @@ private fun app(args: List<String>) {
     }
 }
 
-private fun runAndVerifyCommand(factory: ConsumerProducerFactory, command: Command, args: List<String>) {
+private fun runAndVerifyCommand(
+    factory: ConsumerProducerFactory,
+    command: Command,
+    args: List<String>,
+) {
     try {
         command.execute(factory, args)
         command.verify(factory)

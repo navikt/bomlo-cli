@@ -19,15 +19,19 @@ import kotlin.system.exitProcess
 
 internal class MeasureCommand : Command {
     override val name = "measure"
-    private val mapper = jacksonObjectMapper()
-        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+    private val mapper =
+        jacksonObjectMapper()
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 
     override fun usage() {
         println("Usage: $name <topic> <from timestamp>")
         println("Reads the topic from the given timestamp and until the end, then prints out statistics about each event type (occurrence and total byte size)")
     }
 
-    override fun execute(factory: ConsumerProducerFactory, args: List<String>) {
+    override fun execute(
+        factory: ConsumerProducerFactory,
+        args: List<String>,
+    ) {
         if (args.size < 2) throw RuntimeException("Missing required topic or timestamp arg")
         val topic = args[0]
         val time = LocalDateTime.parse(args[1])
@@ -44,29 +48,33 @@ internal class MeasureCommand : Command {
 
         RapidsCliApplication(factory)
             .apply {
-                JsonRiver(this).apply {
-                    validate { _, node, _ -> node.hasNonNull("@event_name") }
-                }.onMessage(MessageListener(offsetsForTime, latestOffsets))
-            }
-            .partitionsAssignedFirstTime { consumer, partitionsAssigned ->
+                JsonRiver(this)
+                    .apply {
+                        validate { _, node, _ -> node.hasNonNull("@event_name") }
+                    }.onMessage(MessageListener(offsetsForTime, latestOffsets))
+            }.partitionsAssignedFirstTime { consumer, partitionsAssigned ->
                 partitionsAssigned.forEach { partition ->
                     val offset = offsetsForTime.getValue(partition)
                     consumer.seek(partition, offset)
                 }
-            }
-            .start(groupId, listOf(topic))
+            }.start(groupId, listOf(topic))
     }
 
     private class MessageListener(
         private val offsetsForTime: Map<TopicPartition, Long>,
-        private val latestOffsets: Map<TopicPartition, Long>
+        private val latestOffsets: Map<TopicPartition, Long>,
     ) : JsonRiver.JsonValidationSuccessListener {
-        private val progress = latestOffsets.mapValues { (topicPartition, latestOffset) ->
-            val diff = latestOffset - offsetsForTime.getValue(topicPartition)
-            ProgressBar(diff)
-        }
+        private val progress =
+            latestOffsets.mapValues { (topicPartition, latestOffset) ->
+                val diff = latestOffset - offsetsForTime.getValue(topicPartition)
+                ProgressBar(diff)
+            }
         private val events = mutableMapOf<String, MutableList<Int>>()
-        override fun onMessage(record: ConsumerRecord<String, String>, node: JsonNode) {
+
+        override fun onMessage(
+            record: ConsumerRecord<String, String>,
+            node: JsonNode,
+        ) {
             val topicPartition = TopicPartition(record.topic(), record.partition())
             progress.getValue(topicPartition).progress(record.offset() - offsetsForTime.getValue(topicPartition))
             events.getOrPut(node.path("@event_name").asText()) { mutableListOf() }.add(record.value().length)
@@ -75,6 +83,7 @@ internal class MeasureCommand : Command {
 
         private val initialDelay = 3000
         private var lastPrintTime = System.currentTimeMillis() + initialDelay
+
         private fun printProgress() {
             val now = System.currentTimeMillis()
             if ((abs(now - lastPrintTime)) < 1000) return
@@ -88,11 +97,11 @@ internal class MeasureCommand : Command {
                 print("\r${"".repeat(90)}") // clear progress bar
                 val largestName = events.keys.maxOf { it.length }
                 events
-                   .toList()
-                   .sortedWith(compareByDescending({ it.second.sum() }))
-                   .forEach { (event, sizes) ->
-                       println("${event.padEnd(largestName + 4)}: ${sizes.size} messages, summing to ${byteSizeToString(sizes.sum())}")
-                   }
+                    .toList()
+                    .sortedWith(compareByDescending({ it.second.sum() }))
+                    .forEach { (event, sizes) ->
+                        println("${event.padEnd(largestName + 4)}: ${sizes.size} messages, summing to ${byteSizeToString(sizes.sum())}")
+                    }
                 exitProcess(0)
             }
 
@@ -106,9 +115,9 @@ internal class MeasureCommand : Command {
         }
 
         private fun byteSizeToString(length: Int): String {
-            if (length < 1024) return "$length B";
-            val zeros = (32 - length.countLeadingZeroBits()) / 10;
-            return String.format("%.1f %sB", length.toDouble() / (1L.shl(zeros*10)), " KMGTPE"[zeros])
+            if (length < 1024) return "$length B"
+            val zeros = (32 - length.countLeadingZeroBits()) / 10
+            return String.format("%.1f %sB", length.toDouble() / (1L.shl(zeros * 10)), " KMGTPE"[zeros])
         }
     }
 

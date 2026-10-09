@@ -4,12 +4,10 @@ import no.nav.helse.cli.operations.getOffsets
 import no.nav.helse.cli.operations.getPartitions
 import no.nav.rapids_and_rivers.cli.ConsumerProducerFactory
 import no.nav.rapids_and_rivers.cli.RapidsCliApplication
-import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import java.time.LocalDateTime
 import kotlin.random.Random
-import kotlin.system.exitProcess
 
 internal class SetOffsetsCommand : Command {
     override val name = "set_offsets"
@@ -19,7 +17,10 @@ internal class SetOffsetsCommand : Command {
         println("Manually sets offsets for a consumer group")
     }
 
-    override fun execute(factory: ConsumerProducerFactory, args: List<String>) {
+    override fun execute(
+        factory: ConsumerProducerFactory,
+        args: List<String>,
+    ) {
         if (args.size < 2) throw RuntimeException("Missing required consumerGroup or topic arg")
         val consumerGroup = args[0]
         val topic = args[1]
@@ -42,21 +43,23 @@ internal class SetOffsetsCommand : Command {
             app.stop()
         }
 
-        val offsets = partitions.mapNotNull { partition ->
-            val earliest = startOffsets.getValue(partition)
-            val latest = endOffsets.getValue(partition)
-            val current = currentOffsets[consumerGroup]?.get(partition)?.offset()
-            print("Enter a new offset for partition#${partition.partition()} (current is: $current, earliest is $earliest, latest is $latest): ")
+        val offsets =
+            partitions.mapNotNull { partition ->
+                val earliest = startOffsets.getValue(partition)
+                val latest = endOffsets.getValue(partition)
+                val current = currentOffsets[consumerGroup]?.get(partition)?.offset()
+                print("Enter a new offset for partition#${partition.partition()} (current is: $current, earliest is $earliest, latest is $latest): ")
 
-            val output = readln().takeUnless { it.isBlank() }?.let { input ->
-                input.toLongOrNull() ?: when (input.first()) {
-                    'E', 'e' -> earliest
-                    'L', 'l' -> latest
-                    else -> null
-                }
+                val output =
+                    readln().takeUnless { it.isBlank() }?.let { input ->
+                        input.toLongOrNull() ?: when (input.first()) {
+                            'E', 'e' -> earliest
+                            'L', 'l' -> latest
+                            else -> null
+                        }
+                    }
+                output?.let { partition to it }
             }
-            output?.let { partition to it }
-        }
         if (offsets.isEmpty()) return println("No changes")
 
         println("You have entered:")
@@ -69,9 +72,14 @@ internal class SetOffsetsCommand : Command {
         if (answer.lowercase() != "y") return println("Aborting")
 
         println("Setting offsets")
-        client.alterConsumerGroupOffsets(consumerGroup, offsets.associate { (partition, offset) ->
-            partition to OffsetAndMetadata(offset, "Offset set manually via cli at ${LocalDateTime.now()}")
-        }).all().get()
+        client
+            .alterConsumerGroupOffsets(
+                consumerGroup,
+                offsets.associate { (partition, offset) ->
+                    partition to OffsetAndMetadata(offset, "Offset set manually via cli at ${LocalDateTime.now()}")
+                },
+            ).all()
+            .get()
 
         println("Current offsets:")
         getOffsets(client, listOf(consumerGroup))
