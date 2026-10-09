@@ -11,20 +11,25 @@ internal class DeleteConsumerGroupCommand : Command {
         println("Deletes a consumer group and all of its committed offsets")
     }
 
-    override fun execute(factory: ConsumerProducerFactory, args: List<String>) {
+    override fun execute(
+        factory: ConsumerProducerFactory,
+        args: List<String>,
+    ) {
         if (args.isEmpty()) throw RuntimeException("Missing required consumerGroup")
         val consumerGroup = args[0]
         val topic = args.getOrNull(1)
         val client = factory.adminClient()
         if (topic != null) {
-            val partitions = client.describeTopics(listOf(topic))
-                .allTopicNames()
-                .get()
-                .flatMap { (topic, topicDescription) ->
-                    topicDescription.partitions().map { partitionInfo -> TopicPartition(topic, partitionInfo.partition()) }
-                }
-                .toSet()
-            client.deleteConsumerGroupOffsets(consumerGroup, partitions)
+            val partitions =
+                client
+                    .describeTopics(listOf(topic))
+                    .allTopicNames()
+                    .get()
+                    .flatMap { (topic, topicDescription) ->
+                        topicDescription.partitions().map { partitionInfo -> TopicPartition(topic, partitionInfo.partition()) }
+                    }.toSet()
+            client
+                .deleteConsumerGroupOffsets(consumerGroup, partitions)
                 .also { result ->
                     partitions.forEach { partition ->
                         try {

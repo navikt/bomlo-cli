@@ -14,6 +14,7 @@ internal class CheckVersionCommand : Command {
     private companion object {
         private const val REPO = "navikt/bomlo-cli"
         private val mapper = jacksonObjectMapper()
+
         // velg en exitkode som bash-script kan forvente betyr at
         // versjonen er utdatert. Bør ikke være 0 og 1 ettersom de er i bruk fra før
         private const val EXIT_CODE_NEW_VERSION = 10
@@ -26,18 +27,28 @@ internal class CheckVersionCommand : Command {
         println("--download causes new version to be downloaded and dumped to stdout, or the given output filename")
     }
 
-    override fun execute(factory: ConsumerProducerFactory, args: List<String>) {
+    override fun execute(
+        factory: ConsumerProducerFactory,
+        args: List<String>,
+    ) {
         val httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build()
         val downloadNewVersion = args.getOrNull(0) == "--download"
         val outputFilename = args.getOrNull(1)
 
         val repo = this::class.java.`package`.implementationVendor ?: REPO
-        val response = httpClient.send(HttpRequest.newBuilder(URI.create("https://api.github.com/repos/$repo/releases/latest")).GET().build()) {
-            BodySubscribers.mapping(BodySubscribers.ofByteArray()) { mapper.readTree(it) }
-        }
+        val response =
+            httpClient.send(HttpRequest.newBuilder(URI.create("https://api.github.com/repos/$repo/releases/latest")).GET().build()) {
+                BodySubscribers.mapping(BodySubscribers.ofByteArray()) { mapper.readTree(it) }
+            }
         val selfVersion: String? = this::class.java.`package`.implementationVersion
         val version = response.body().path("tag_name").asText()
-        val downloadUrl = response.body().path("assets").first { it.path("name").asText() == "app.jar" }.path("browser_download_url").asText()
+        val downloadUrl =
+            response
+                .body()
+                .path("assets")
+                .first { it.path("name").asText() == "app.jar" }
+                .path("browser_download_url")
+                .asText()
         val isOutdated = selfVersion != version
 
         if (!downloadNewVersion) {
@@ -51,10 +62,11 @@ internal class CheckVersionCommand : Command {
             }
         } else if (isOutdated) {
             val outputStream = outputFilename?.let { FileOutputStream(it) } ?: System.out
-            val request = HttpRequest
-                .newBuilder(URI.create(downloadUrl))
-                .GET()
-                .build()
+            val request =
+                HttpRequest
+                    .newBuilder(URI.create(downloadUrl))
+                    .GET()
+                    .build()
             val fileResponse = httpClient.send(request, BodyHandlers.ofInputStream())
             fileResponse.body().use { inputStream ->
                 outputStream.use { inputStream.transferTo(it) }

@@ -13,7 +13,10 @@ internal class FollowTopicCommand : Command {
         println("Prints all messages from a topic")
     }
 
-    override fun execute(factory: ConsumerProducerFactory, args: List<String>) {
+    override fun execute(
+        factory: ConsumerProducerFactory,
+        args: List<String>,
+    ) {
         if (args.isEmpty()) throw RuntimeException("Missing required topic arg")
         val topic = args[0]
         val groupId = "bomli-cli-${Random.nextInt()}"
@@ -23,10 +26,9 @@ internal class FollowTopicCommand : Command {
         RapidsCliApplication(factory)
             .apply {
                 JsonRiver(this).onMessage { record, node ->
-                    println("#${record.partition()}, offset ${record.offset()} - ${node.path("@event_name").asText()}: ${node.path("@id").asText()} --> ${node.toString()}")
+                    println("#${record.partition()}, offset ${record.offset()} - ${node.path("@event_name").asText()}: ${node.path("@id").asText()} --> $node")
                 }
-            }
-            .start(groupId, listOf(topic))
+            }.start(groupId, listOf(topic))
     }
 
     override fun verify(factory: ConsumerProducerFactory) {}

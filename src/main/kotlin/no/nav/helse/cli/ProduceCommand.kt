@@ -8,15 +8,19 @@ import java.io.File
 
 internal class ProduceCommand : Command {
     override val name = "produce"
-    private val mapper = jacksonObjectMapper()
-        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+    private val mapper =
+        jacksonObjectMapper()
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 
     override fun usage() {
         println("Usage: $name <topic> <kafka record key> <path to json file>")
         println("Produces a message onto the topic with the given key and json file.")
     }
 
-    override fun execute(factory: ConsumerProducerFactory, args: List<String>) {
+    override fun execute(
+        factory: ConsumerProducerFactory,
+        args: List<String>,
+    ) {
         if (args.size < 3) throw RuntimeException("Missing required key arg and file arg")
         val topic = args[0]
         val key = args[1]
