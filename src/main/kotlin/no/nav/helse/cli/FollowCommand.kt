@@ -13,7 +13,10 @@ internal class FollowCommand : Command {
         println("Prints all messages that contains the given FNR")
     }
 
-    override fun execute(factory: ConsumerProducerFactory, args: List<String>) {
+    override fun execute(
+        factory: ConsumerProducerFactory,
+        args: List<String>,
+    ) {
         if (args.size < 2) throw RuntimeException("Missing required topic or fnr arg")
         val topic = args[0]
         val fnr = args[1]
@@ -23,16 +26,16 @@ internal class FollowCommand : Command {
         println("Will NOT be committing any offsets. Starting from LATEST")
         RapidsCliApplication(factory)
             .apply {
-                JsonRiver(this).apply {
-                    validate { record, node, _ ->
-                        node.path("fødselsnummer").asText() == fnr
-                            || record.key() == fnr
+                JsonRiver(this)
+                    .apply {
+                        validate { record, node, _ ->
+                            node.path("fødselsnummer").asText() == fnr ||
+                                record.key() == fnr
+                        }
+                    }.onMessage { record, node ->
+                        println("#${record.partition()}, offset ${record.offset()} - ${node.path("@event_name").asText()}: ${node.path("@id").asText()} --> $node")
                     }
-                }.onMessage { record, node ->
-                    println("#${record.partition()}, offset ${record.offset()} - ${node.path("@event_name").asText()}: ${node.path("@id").asText()} --> ${node.toString()}")
-                }
-            }
-            .start(groupId, listOf(topic))
+            }.start(groupId, listOf(topic))
     }
 
     override fun verify(factory: ConsumerProducerFactory) {}

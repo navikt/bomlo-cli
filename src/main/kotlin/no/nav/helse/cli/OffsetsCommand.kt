@@ -16,7 +16,10 @@ internal class OffsetsCommand : Command {
         println("Gets the offsets which were latest at the specified timestamp")
     }
 
-    override fun execute(factory: ConsumerProducerFactory, args: List<String>) {
+    override fun execute(
+        factory: ConsumerProducerFactory,
+        args: List<String>,
+    ) {
         if (args.size < 2) throw RuntimeException("Missing required topic or timestamp arg")
         val topic = args[0]
         val time = LocalDateTime.parse(args[1])

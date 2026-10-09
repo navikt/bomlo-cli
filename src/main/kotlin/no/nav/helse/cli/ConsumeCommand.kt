@@ -18,7 +18,10 @@ internal class ConsumeCommand : Command {
         println("Prints all events matching the given type")
     }
 
-    override fun execute(factory: ConsumerProducerFactory, args: List<String>) {
+    override fun execute(
+        factory: ConsumerProducerFactory,
+        args: List<String>,
+    ) {
         if (args.size < 2) throw RuntimeException("Missing required topic or timestamp arg")
         val topic = args[0]
         val eventName = args[1].split(",")
@@ -41,14 +44,12 @@ internal class ConsumeCommand : Command {
                     .onMessage { record, node ->
                         println("#${record.partition()}, offset ${record.offset()} - ${node.path("@id").asText()} --> $node")
                     }
-            }
-            .partitionsAssignedFirstTime { consumer, partitionsAssigned ->
+            }.partitionsAssignedFirstTime { consumer, partitionsAssigned ->
                 partitionsAssigned.forEach { partition ->
                     val offset = offsetsForTime.getValue(partition)
                     if (offset > 0) consumer.seek(partition, offset)
                 }
-            }
-            .start(groupId, listOf(topic))
+            }.start(groupId, listOf(topic))
     }
 
     override fun verify(factory: ConsumerProducerFactory) {}
